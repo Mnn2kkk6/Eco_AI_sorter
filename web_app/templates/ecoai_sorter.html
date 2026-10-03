@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EcoAI Sorter - Hệ Thống Phân Loại Rác Thông Minh</title>
+    <!-- Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        eco: {
+                            50: '#f0fdf4',
+                            100: '#dcfce7',
+                            500: '#22c55e',
+                            600: '#16a34a',
+                            700: '#15803d',
+                            800: '#166534',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Custom animations for the progress bar and loading state */
+        .progress-bar-animate {
+            transition: width 1.5s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .pulse-slow {
+            animation: pulse 2.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: .5; }
+        }
+        .drag-active {
+            border-color: #22c55e;
+            background-color: #dcfce7;
+        }
+    </style>
+</head>
+<body class="bg-stone-50 text-slate-800 min-h-screen flex flex-col font-sans">
+
+    <!-- Header -->
+    <header class="bg-white shadow-sm border-b border-eco-100">
+        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-2 text-eco-600">
+                <i class="fa-solid fa-leaf text-2xl"></i>
+                <h1 class="text-xl font-bold tracking-tight">EcoAI <span class="text-slate-700">Sorter</span></h1>
+            </div>
+            <nav id="main-nav" class="flex gap-4 md:gap-6 text-xs md:text-sm font-medium text-slate-600">
+                <a href="#home" data-view="home" class="nav-link pb-1">Phân loại (Home)</a>
+                <a href="#guide" data-view="guide" class="nav-link pb-1">Hướng dẫn tái chế</a>
+                <a href="#about" data-view="about" class="nav-link pb-1">Về dự án</a>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-grow max-w-6xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8">
+        
+        <div id="view-home">
+        <div class="mb-8 text-center md:text-left">
+            <h2 class="text-3xl font-bold text-slate-800 mb-2">Nhận diện rác thải bằng AI</h2>
+            <p class="text-slate-500">Tải ảnh lên hoặc sử dụng camera để hệ thống phân tích và hướng dẫn bạn cách phân loại rác đúng cách bảo vệ môi trường.</p>
+        </div>
+
+        <div class="grid md:grid-cols-2 gap-8 items-start">
+            
+            <!-- Left Column: Input Area -->
+            <section class="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 flex flex-col gap-6">
+                <div class="flex items-center justify-between mb-2">
+                    <h3 class="text-lg font-semibold flex items-center gap-2">
+                        <i class="fa-solid fa-cloud-arrow-up text-eco-500"></i> Đầu vào dữ liệu
+                    </h3>
+                </div>
+
+                <!-- Drag & Drop Area -->
+                <div id="drop-zone" class="border-2 border-dashed border-slate-300 rounded-xl p-10 flex flex-col items-center justify-center text-center cursor-pointer hover:border-eco-500 hover:bg-eco-50 transition-all duration-200 group">
+                    <input type="file" id="file-input" class="hidden" accept="image/*">
+                    <div class="w-16 h-16 rounded-full bg-eco-50 flex items-center justify-center text-eco-500 mb-4 group-hover:scale-110 transition-transform duration-200">
+                        <i class="fa-regular fa-image text-3xl"></i>
+                    </div>
+                    <p class="text-slate-700 font-medium mb-1">Kéo thả hình ảnh vào đây</p>
+                    <p class="text-slate-400 text-sm mb-4">hoặc click để chọn file từ máy tính</p>
+                    <button class="px-4 py-2 bg-slate-800 text-white rounded-lg text-sm font-medium hover:bg-slate-700 transition-colors" onclick="document.getElementById('file-input').click()">
+                        Chọn File Ảnh
+                    </button>
+                </div>
+
+                <div class="relative flex items-center py-2">
+                    <div class="flex-grow border-t border-slate-200"></div>
+                    <span class="flex-shrink-0 mx-4 text-slate-400 text-sm">HOẶC</span>
+                    <div class="flex-grow border-t border-slate-200"></div>
+                </div>
+
+                <!-- Webcam Button -->
+                <button id="webcam-btn" class="w-full py-3 px-4 border-2 border-eco-600 text-eco-700 font-semibold rounded-xl flex items-center justify-center gap-2 hover:bg-eco-600 hover:text-white transition-all duration-200">
+                    <i class="fa-solid fa-camera"></i> Sử dụng Webcam
+                </button>
+            </section>
+
+            <!-- Right Column: Results Area -->
+            <section class="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 min-h-[450px] flex flex-col relative overflow-hidden">
+                <h3 class="text-lg font-semibold flex items-center gap-2 mb-6">
+                    <i class="fa-solid fa-microchip text-eco-500"></i> Kết quả phân tích
+                </h3>
+
+                <!-- State 1: Empty / Waiting -->
+                <div id="state-empty" class="flex-grow flex flex-col items-center justify-center text-slate-400">
+                    <i class="fa-solid fa-robot text-6xl mb-4 opacity-50"></i>
+                    <p>Chưa có hình ảnh nào được tải lên.</p>
+                </div>
+
+                <!-- State 2: Analyzing (Loading) -->
+                <div id="state-loading" class="hidden flex-grow flex flex-col items-center justify-center text-eco-600">
+                    <i class="fa-solid fa-circle-notch fa-spin text-5xl mb-6"></i>
+                    <p class="font-medium text-lg pulse-slow">AI đang quét và phân tích...</p>
+                </div>
+
+                <!-- State 3: Result -->
+                <div id="state-result" class="hidden flex-col gap-6 flex-grow">
+                    <!-- Image Preview -->
+                    <div class="w-full h-48 bg-slate-100 rounded-xl overflow-hidden relative border border-slate-200 flex-shrink-0">
+                        <img id="image-preview" src="" alt="Uploaded preview" class="w-full h-full object-cover">
+                    </div>
+
+                    <!-- Prediction Stats -->
+                    <div class="space-y-4">
+                        <div>
+                            <p class="text-sm text-slate-500 font-medium mb-1">Loại rác phát hiện:</p>
+                            <h4 id="result-class" class="text-3xl font-bold text-slate-800">—</h4>
+                            <span id="result-group" class="inline-block mt-2 px-3 py-1 rounded-full text-xs font-semibold bg-eco-100 text-eco-800"></span>
+                        </div>
+                        
+                        <div>
+                            <div class="flex justify-between text-sm mb-1">
+                                <span class="font-medium text-slate-600">Độ tự tin (Confidence)</span>
+                                <span id="result-confidence-text" class="font-bold text-eco-600">0%</span>
+                            </div>
+                            <div class="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden">
+                                <div id="result-confidence-bar" class="bg-eco-500 h-2.5 rounded-full progress-bar-animate" style="width: 0%"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Recycling Instructions Card -->
+                    <div class="bg-eco-50 border border-eco-200 rounded-xl p-4 mt-auto">
+                        <h5 class="font-bold text-eco-800 flex items-center gap-2 mb-2">
+                            <i class="fa-solid fa-recycle"></i> Hướng dẫn xử lý
+                        </h5>
+                        <p id="result-instruction" class="text-sm text-eco-700 leading-relaxed">
+                            Hãy đổ hết nước/chất lỏng bên trong, súc rửa sạch và làm bẹp chai trước khi bỏ vào thùng rác tái chế (thường có màu trắng hoặc cam).
+                        </p>
+                        <button id="ask-agent-btn" class="mt-3 text-sm font-semibold text-eco-700 hover:text-eco-800 flex items-center gap-2">
+                            <i class="fa-solid fa-robot"></i> Hỏi AI cách tái chế vật này <i class="fa-solid fa-arrow-right text-xs"></i>
+                        </button>
+                    </div>
+                </div>
+
+            </section>
+        </div><!-- /grid -->
+        </div><!-- /view-home -->
+
+        <!-- ================= VIEW: HƯỚNG DẪN TÁI CHẾ (AI Agent) ================= -->
+        <div id="view-guide" class="hidden">
+            <div class="mb-6 text-center md:text-left">
+                <h2 class="text-3xl font-bold text-slate-800 mb-2">Hướng dẫn tái chế cùng AI</h2>
+                <p class="text-slate-500">Hỏi cách phân loại, tái chế hoặc xử lý rác. Agent có thể tìm thông tin mới trên web để trả lời.</p>
+            </div>
+            <section class="bg-white rounded-2xl shadow-sm border border-slate-100 flex flex-col" style="height: 70vh; min-height: 480px;">
+                <div class="px-5 py-3 border-b border-slate-100 flex items-center justify-between gap-3 flex-wrap">
+                    <div class="flex items-center gap-2 font-semibold text-slate-700"><i class="fa-solid fa-robot text-eco-500"></i> EcoAI Agent</div>
+                    <div class="flex items-center gap-2 text-xs">
+                        <span id="ctx-chip" class="hidden px-3 py-1 rounded-full bg-eco-100 text-eco-800 font-semibold"></span>
+                        <span id="agent-status" class="text-slate-400"></span>
+                    </div>
+                </div>
+                <div id="chat-log" class="flex-grow overflow-y-auto p-5 flex flex-col gap-4"></div>
+                <div id="chat-suggestions" class="px-5 pb-2 flex flex-wrap gap-2"></div>
+                <div class="p-4 border-t border-slate-100 flex gap-3">
+                    <input id="chat-input" type="text" maxlength="1000" placeholder="Ví dụ: Chai nhựa dính dầu có tái chế được không?"
+                           class="flex-grow border border-slate-300 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-eco-500">
+                    <button id="chat-send" class="px-5 py-2 bg-eco-600 text-white rounded-xl font-semibold hover:bg-eco-700 disabled:opacity-50"><i class="fa-solid fa-paper-plane"></i></button>
+                </div>
+            </section>
+            <p class="text-xs text-slate-400 mt-3">AI có thể trả lời chưa chính xác; với quy định và điểm thu gom, hãy kiểm tra lại nguồn trích dẫn hoặc thông báo của địa phương.</p>
+        </div>
+
+        <!-- ================= VIEW: VỀ DỰ ÁN ================= -->
+        <div id="view-about" class="hidden">
+            <div class="mb-6 text-center md:text-left">
+                <h2 class="text-3xl font-bold text-slate-800 mb-2">Về dự án EcoAI Sorter</h2>
+                <p class="text-slate-500">Hệ thống nhận diện ảnh rác thải và hướng dẫn phân loại, tái chế đúng cách.</p>
+            </div>
+            <div class="grid md:grid-cols-2 gap-6">
+                <section class="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
+                    <h3 class="font-bold text-slate-800 mb-3 flex items-center gap-2"><i class="fa-solid fa-bullseye text-eco-500"></i> Mục tiêu</h3>
+                    <p class="text-sm text-slate-600 leading-relaxed">Giúp người dùng biết một vật là rác hữu cơ hay tái chế, và nếu tái chế được thì thuộc loại vật liệu nào, từ đó bỏ đúng thùng. Phần hướng dẫn chi tiết do AI Agent hỗ trợ.</p>
+                </section>
+                <section class="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
+                    <h3 class="font-bold text-slate-800 mb-3 flex items-center gap-2"><i class="fa-solid fa-database text-eco-500"></i> Dữ liệu</h3>
+                    <ul class="text-sm text-slate-600 leading-relaxed list-disc pl-5 space-y-1">
+                        <li><b>Bộ O/R (Kaggle):</b> khoảng 25.000 ảnh, nhãn Hữu cơ (O) / Tái chế (R).</li>
+                        <li><b>TrashNet:</b> khoảng 2.500 ảnh, 6 loại: cardboard, glass, metal, paper, plastic, trash.</li>
+                    </ul>
+                </section>
+                <section class="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 md:col-span-2">
+                    <h3 class="font-bold text-slate-800 mb-4 flex items-center gap-2"><i class="fa-solid fa-diagram-project text-eco-500"></i> Cách hoạt động</h3>
+                    <div class="flex flex-col md:flex-row md:items-stretch gap-3 text-sm">
+                        <div class="flex-1 bg-eco-50 border border-eco-200 rounded-xl p-4"><b>1. Ảnh đầu vào</b><br><span class="text-slate-600">Tải ảnh hoặc chụp bằng webcam.</span></div>
+                        <div class="hidden md:flex items-center text-eco-500"><i class="fa-solid fa-arrow-right"></i></div>
+                        <div class="flex-1 bg-eco-50 border border-eco-200 rounded-xl p-4"><b>2. Backbone dùng chung</b><br><span class="text-slate-600">EfficientNet-B0 trích xuất đặc trưng.</span></div>
+                        <div class="hidden md:flex items-center text-eco-500"><i class="fa-solid fa-arrow-right"></i></div>
+                        <div class="flex-1 bg-eco-50 border border-eco-200 rounded-xl p-4"><b>3. Hai đầu ra</b><br><span class="text-slate-600">Head O/R; nếu là R thì head 6 loại vật liệu.</span></div>
+                        <div class="hidden md:flex items-center text-eco-500"><i class="fa-solid fa-arrow-right"></i></div>
+                        <div class="flex-1 bg-eco-50 border border-eco-200 rounded-xl p-4"><b>4. Hướng dẫn</b><br><span class="text-slate-600">Gợi ý xử lý + hỏi AI Agent.</span></div>
+                    </div>
+                    <p class="text-sm text-slate-600 leading-relaxed mt-4">Đây là <b>học đa nhiệm (multi-task learning)</b>: hai bộ dữ liệu có nhãn khác nhau cùng huấn luyện một mô hình. Ảnh Kaggle chỉ tính loss cho head O/R; ảnh TrashNet tính loss cho head vật liệu (và cả head O/R với 5 loại tái chế).</p>
+                </section>
+                <section class="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
+                    <h3 class="font-bold text-slate-800 mb-3 flex items-center gap-2"><i class="fa-solid fa-chart-line text-eco-500"></i> Kết quả trên tập test</h3>
+                    <ul class="text-sm text-slate-600 leading-relaxed list-disc pl-5 space-y-1">
+                        <li>Head O/R: độ chính xác khoảng <b>93%</b> (2.875 ảnh).</li>
+                        <li>Head vật liệu: khoảng <b>95%</b> (384 ảnh TrashNet).</li>
+                    </ul>
+                    <p class="text-xs text-slate-500 mt-3">Lưu ý: dữ liệu huấn luyện chủ yếu là ảnh một vật, nền đơn giản. Ảnh nhiều vật hoặc cảnh phức tạp (ví dụ bãi biển đầy rác) có thể cho kết quả sai.</p>
+                </section>
+                <section class="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
+                    <h3 class="font-bold text-slate-800 mb-3 flex items-center gap-2"><i class="fa-solid fa-layer-group text-eco-500"></i> Công nghệ</h3>
+                    <div class="flex flex-wrap gap-2 text-xs font-semibold">
+                        <span class="px-3 py-1 rounded-full bg-slate-100 text-slate-700">PyTorch</span>
+                        <span class="px-3 py-1 rounded-full bg-slate-100 text-slate-700">FastAPI</span>
+                        <span class="px-3 py-1 rounded-full bg-slate-100 text-slate-700">Docker</span>
+                        <span class="px-3 py-1 rounded-full bg-slate-100 text-slate-700">Airflow</span>
+                        <span class="px-3 py-1 rounded-full bg-slate-100 text-slate-700">Groq (LLM)</span>
+                        <span class="px-3 py-1 rounded-full bg-slate-100 text-slate-700">Gemini (dự phòng)</span>
+                        <span class="px-3 py-1 rounded-full bg-slate-100 text-slate-700">Tavily (tìm web)</span>
+                    </div>
+                </section>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-white border-t border-slate-200 py-6 mt-8">
+        <div class="max-w-6xl mx-auto px-4 text-center text-slate-500 text-sm">
+            &copy; 2026 EcoAI Sorter Project. Built for AI Garbage Classification Prototype.
+        </div>
+    </footer>
+
+
+    <!-- Webcam modal -->
+    <div id="webcam-modal" class="fixed inset-0 bg-black/70 hidden items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-2xl p-4 w-full max-w-lg flex flex-col gap-3">
+            <video id="webcam-video" autoplay playsinline class="w-full rounded-xl bg-black"></video>
+            <div class="flex gap-3">
+                <button id="webcam-capture" class="flex-1 py-2 bg-eco-600 text-white rounded-lg font-semibold hover:bg-eco-700"><i class="fa-solid fa-camera"></i> Chụp &amp; phân loại</button>
+                <button id="webcam-close" class="px-4 py-2 border border-slate-300 rounded-lg text-slate-600 hover:bg-slate-100">Đóng</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Custom Message Box (To replace alerts) -->
+    <div id="message-box" class="fixed top-4 right-4 bg-slate-800 text-white px-6 py-4 rounded-xl shadow-lg transform transition-transform duration-300 translate-x-[120%] z-50 flex items-center gap-3">
+        <i class="fa-solid fa-circle-info text-blue-400"></i>
+        <span id="message-box-text">Message here</span>
+        <button onclick="hideMessage()" class="ml-4 text-slate-400 hover:text-white">
+            <i class="fa-solid fa-times"></i>
+        </button>
+    </div>
+
+    <script>
+        // DOM Elements
+        const dropZone = document.getElementById('drop-zone');
+        const fileInput = document.getElementById('file-input');
+        const webcamBtn = document.getElementById('webcam-btn');
+        
+        const stateEmpty = document.getElementById('state-empty');
+        const stateLoading = document.getElementById('state-loading');
+        const stateResult = document.getElementById('state-result');
+        
+        const imagePreview = document.getElementById('image-preview');
+        const resultGroup = document.getElementById('result-group');
+        
+        const resultClass = document.getElementById('result-class');
+        const resultConfidenceText = document.getElementById('result-confidence-text');
+        const resultConfidenceBar = document.getElementById('result-confidence-bar');
+        const resultInstruction = document.getElementById('result-instruction');
+
+        const messageBox = document.getElementById('message-box');
+        const messageBoxText = document.getElementById('message-box-text');
+
+        /* Custom Notification Function */
+        function showMessage(msg) {
+            messageBoxText.textContent = msg;
+            messageBox.classList.remove('translate-x-[120%]');
+            setTimeout(hideMessage, 4000);
+        }
+
+        function hideMessage() {
+            messageBox.classList.add('translate-x-[120%]');
+        }
+
+        /* Drag and Drop Events */
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('drag-active');
+        });
+
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('drag-active');
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('drag-active');
+            
+            if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                const file = e.dataTransfer.files[0];
+                handleFile(file);
+            }
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files && e.target.files.length > 0) {
+                handleFile(e.target.files[0]);
+            }
+        });
+
+        /* Webcam thật (getUserMedia) */
+        const webcamModal = document.getElementById('webcam-modal');
+        const webcamVideo = document.getElementById('webcam-video');
+        let webcamStream = null;
+
+        function closeWebcam() {
+            if (webcamStream) webcamStream.getTracks().forEach(t => t.stop());
+            webcamStream = null;
+            webcamModal.classList.add('hidden'); webcamModal.classList.remove('flex');
+        }
+
+        webcamBtn.addEventListener('click', async () => {
+            try {
+                webcamStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+                webcamVideo.srcObject = webcamStream;
+                webcamModal.classList.remove('hidden'); webcamModal.classList.add('flex');
+            } catch (err) {
+                showMessage("Không mở được webcam. Hãy cấp quyền camera (cần https hoặc localhost).");
+            }
+        });
+        document.getElementById('webcam-close').addEventListener('click', closeWebcam);
+        document.getElementById('webcam-capture').addEventListener('click', () => {
+            const c = document.createElement('canvas');
+            c.width = webcamVideo.videoWidth; c.height = webcamVideo.videoHeight;
+            c.getContext('2d').drawImage(webcamVideo, 0, 0);
+            closeWebcam();
+            c.toBlob(blob => handleFile(new File([blob], 'webcam.jpg', { type: 'image/jpeg' })), 'image/jpeg', 0.92);
+        });
+
+        /* Handle file loading */
+        function handleFile(file) {
+            if (!file.type.startsWith('image/')) {
+                showMessage("Vui lòng tải lên một tệp hình ảnh hợp lệ (JPG, PNG).");
+                return;
+            }
+            const reader = new FileReader();
+            reader.onload = (e) => { imagePreview.src = e.target.result; };
+            reader.readAsDataURL(file);
+            classifyImage(file);
+        }
+
+        /* Gọi backend FastAPI -> mô hình multi-task */
+        async function classifyImage(file) {
+            stateEmpty.classList.add('hidden');
+            stateResult.classList.add('hidden');
+            stateLoading.classList.remove('hidden');
+            resultConfidenceBar.style.width = '0%';
+            resultConfidenceText.textContent = '0%';
+            try {
+                const fd = new FormData();
+                fd.append('file', file);
+                const res = await fetch('/api/predict', { method: 'POST', body: fd });
+                if (!res.ok) throw new Error((await res.json()).detail || res.statusText);
+                showResult(await res.json());
+            } catch (err) {
+                stateLoading.classList.add('hidden');
+                stateEmpty.classList.remove('hidden');
+                showMessage("Lỗi phân tích: " + err.message);
+            }
+        }
+
+        function showResult(r) {
+            lastResult = r;
+            stateLoading.classList.add('hidden');
+            stateResult.classList.remove('hidden');
+            resultClass.textContent = r.label_name;
+            resultInstruction.textContent = r.advice;
+            resultGroup.textContent = `Nhóm: ${r.group_name} (${Math.round(r.group_confidence * 100)}%)`;
+            const pct = Math.round(r.confidence * 100);
+            setTimeout(() => {
+                resultConfidenceBar.style.width = `${pct}%`;
+                let cur = 0;
+                const iv = setInterval(() => {
+                    cur = Math.min(cur + 2, pct);
+                    resultConfidenceText.textContent = `${cur}%`;
+                    if (cur >= pct) clearInterval(iv);
+                }, 20);
+            }, 100);
+        }
+
+        /* ================= Điều hướng giữa các tab ================= */
+        let lastResult = null;
+        const VIEWS = ['home', 'guide', 'about'];
+        function showView(name) {
+            if (!VIEWS.includes(name)) name = 'home';
+            VIEWS.forEach(v => document.getElementById('view-' + v).classList.toggle('hidden', v !== name));
+            document.querySelectorAll('.nav-link').forEach(a => {
+                const on = a.dataset.view === name;
+                a.classList.toggle('border-b-2', on); a.classList.toggle('border-eco-600', on);
+                a.classList.toggle('text-eco-600', on);
+            });
+            if (name === 'guide') initGuide();
+        }
+        window.addEventListener('hashchange', () => showView(location.hash.slice(1)));
+
+        /* ================= AI Agent chat ================= */
+        const chatLog = document.getElementById('chat-log');
+        const chatInput = document.getElementById('chat-input');
+        const chatSend = document.getElementById('chat-send');
+        let chatHistory = [], guideReady = false, sending = false;
+
+        const SUGGESTIONS = ['Quy định phân loại rác tại nguồn ở Việt Nam là gì?', 'Pin cũ và bóng đèn hỏng bỏ ở đâu?',
+                             'Làm sao để ủ phân compost tại nhà?', 'Nhựa loại nào tái chế được?'];
+
+        function esc(t) { return t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+        function md(t) {            // markdown tối giản, đã escape HTML trước
+            let h = esc(t).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>');
+            h = h.replace(/^\s*[-*•]\s+(.*)$/gm, '<li>$1</li>').replace(/(<li>.*<\/li>\n?)+/g, m => '<ul class="list-disc pl-5 my-1">' + m + '</ul>');
+            return h.replace(/\n/g, '<br>').replace(/<\/ul><br>/g, '</ul>');
+        }
+        function bubble(role, html, extra) {
+            const d = document.createElement('div');
+            d.className = 'max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed ' +
+                (role === 'user' ? 'self-end bg-eco-600 text-white' : 'self-start bg-slate-100 text-slate-800');
+            d.innerHTML = html + (extra || '');
+            chatLog.appendChild(d); chatLog.scrollTop = chatLog.scrollHeight;
+            return d;
+        }
+        function sourcesHtml(src) {
+            if (!src || !src.length) return '';
+            return '<div class="mt-2 pt-2 border-t border-slate-300/60 text-xs text-slate-500"><b>Nguồn:</b><ul class="list-disc pl-5">' +
+                src.map(s => `<li><a class="underline hover:text-eco-700" target="_blank" rel="noopener noreferrer" href="${esc(s.url)}">${esc(s.title || s.url)}</a></li>`).join('') + '</ul></div>';
+        }
+
+        async function initGuide() {
+            const chip = document.getElementById('ctx-chip');
+            if (lastResult) { chip.textContent = 'Vật vừa nhận diện: ' + lastResult.label_name; chip.classList.remove('hidden'); }
+            if (guideReady) return;
+            guideReady = true;
+            bubble('assistant', 'Xin chào! Tôi là EcoAI Agent. Bạn có thể hỏi cách phân loại, tái chế hoặc xử lý bất kỳ loại rác nào.' +
+                (lastResult ? ` Tôi thấy bạn vừa nhận diện <b>${esc(lastResult.label_name)}</b> — bạn muốn biết cách xử lý vật này không?` : ''));
+            const box = document.getElementById('chat-suggestions');
+            const list = lastResult ? ['Vật này nên xử lý và tái chế thế nào?', ...SUGGESTIONS.slice(0, 3)] : SUGGESTIONS;
+            list.forEach(q => {
+                const b = document.createElement('button');
+                b.className = 'text-xs px-3 py-1.5 rounded-full border border-eco-200 text-eco-700 hover:bg-eco-50';
+                b.textContent = q; b.onclick = () => sendChat(q); box.appendChild(b);
+            });
+            try {
+                const st = await (await fetch('/api/agent/status')).json();
+                const ok = st.groq || st.gemini;
+                document.getElementById('agent-status').textContent = ok ? (st.tavily ? 'Có tìm web' : 'Không tìm web (thiếu Tavily)') : 'Chưa cấu hình khoá API';
+                if (!ok) bubble('assistant', '⚠️ Server chưa có khoá API. Hãy điền <code>GROQ_API_KEY</code> (hoặc <code>GEMINI_API_KEY</code>) trong file <code>.env</code> rồi khởi động lại.');
+            } catch (e) { /* bỏ qua */ }
+        }
+
+        async function sendChat(text) {
+            text = (text || chatInput.value).trim();
+            if (!text || sending) return;
+            sending = true; chatSend.disabled = true; chatInput.value = '';
+            document.getElementById('chat-suggestions').classList.add('hidden');
+            bubble('user', esc(text));
+            chatHistory.push({ role: 'user', content: text });
+            const wait = bubble('assistant', '<i class="fa-solid fa-circle-notch fa-spin"></i> Đang suy nghĩ…');
+            try {
+                const ctx = lastResult ? { label_name: lastResult.label_name, group_name: lastResult.group_name, confidence: lastResult.confidence.toFixed(2) } : null;
+                const res = await fetch('/api/agent/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ messages: chatHistory.slice(-8), context: ctx }) });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.detail || res.statusText);
+                wait.innerHTML = md(data.answer) + sourcesHtml(data.sources);
+                chatHistory.push({ role: 'assistant', content: data.answer });
+            } catch (err) {
+                wait.className += ' !bg-red-50 !text-red-700';
+                wait.textContent = 'Lỗi: ' + err.message;
+                chatHistory.pop();
+            } finally {
+                sending = false; chatSend.disabled = false; chatLog.scrollTop = chatLog.scrollHeight; chatInput.focus();
+            }
+        }
+        chatSend.addEventListener('click', () => sendChat());
+        chatInput.addEventListener('keydown', e => { if (e.key === 'Enter') sendChat(); });
+        document.getElementById('ask-agent-btn').addEventListener('click', () => {
+            location.hash = '#guide';
+            if (lastResult) setTimeout(() => sendChat(`Hướng dẫn tôi cách xử lý và tái chế: ${lastResult.label_name}`), 50);
+        });
+        showView(location.hash.slice(1));
+    </script>
+</body>
+</html>

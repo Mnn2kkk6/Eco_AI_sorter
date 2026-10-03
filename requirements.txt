@@ -1,0 +1,10 @@
+torch
+torchvision
+scikit-learn
+pillow
+fastapi
+uvicorn[standard]
+python-multipart
+pyyaml
+requests
+python-dotenv

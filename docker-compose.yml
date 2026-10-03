@@ -1,0 +1,30 @@
+services:
+  web:
+    build: { context: ., dockerfile: docker/web.Dockerfile }
+    ports: ["8000:8000"]
+    volumes: ["./weights:/app/weights:ro"]
+    env_file: .env
+    restart: unless-stopped
+
+  training:                       # chạy tay: docker compose --profile train run --rm training
+    profiles: ["train"]
+    image: ecoai-training:latest
+    build: { context: ., dockerfile: docker/training.Dockerfile }
+    volumes: ["./data:/app/data", "./weights:/app/weights"]
+    shm_size: "2gb"
+    # GPU: bỏ comment
+    # deploy: { resources: { reservations: { devices: [{ driver: nvidia, count: all, capabilities: [gpu] }] } } }
+
+  airflow:
+    profiles: ["airflow"]
+    build: { context: ., dockerfile: docker/airflow.Dockerfile }
+    command: standalone
+    ports: ["8080:8080"]
+    user: root                    # để đọc docker.sock trên Docker Desktop
+    environment:
+      HOST_PROJECT_DIR: ${HOST_PROJECT_DIR}
+      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - .:/opt/airflow/project
+      - /var/run/docker.sock:/var/run/docker.sock

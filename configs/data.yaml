@@ -1,0 +1,34 @@
+# Cấu hình dữ liệu — sửa file này thay vì sửa code.
+raw_dir: data/raw          # nơi chứa zip hoặc thư mục đã giải nén
+out_dir: data/processed    # nơi ghi manifest.csv, classes.json, summary.json
+seed: 42
+
+# Không gian nhãn của mô hình (thứ tự = chỉ số lớp)
+binary_classes: [O, R]
+material_classes: [cardboard, glass, metal, paper, plastic, trash]
+
+datasets:
+  kaggle_or:
+    enabled: true
+    find: DATASET              # tên thư mục cần tìm (không phân biệt hoa/thường)
+    zip: DATASET.zip           # tự giải nén nếu chưa có thư mục
+    layout: split_folders      # có sẵn thư mục TRAIN/TEST
+    splits: {train: TRAIN, test: TEST}
+    val_from_train: 0.1        # tách 10% TRAIN làm val
+    classes:                   # tên thư mục lớp -> nhãn ở từng head (bỏ trống = không tính loss head đó)
+      O: {bin: O}
+      R: {bin: R}
+
+  trashnet:
+    enabled: true
+    find: dataset-resized
+    zip: dataset-resized.zip
+    layout: class_folders      # chỉ có thư mục lớp, tự chia train/val/test
+    ratios: [0.7, 0.15, 0.15]
+    classes:
+      cardboard: {bin: R, mat: cardboard}
+      glass:     {bin: R, mat: glass}
+      metal:     {bin: R, mat: metal}
+      paper:     {bin: R, mat: paper}
+      plastic:   {bin: R, mat: plastic}
+      trash:     {mat: trash}  # không thuộc O/R -> head nhị phân bỏ qua
